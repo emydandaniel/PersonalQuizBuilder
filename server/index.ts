@@ -1,4 +1,5 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
+import { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import * as pathModule from "path";
@@ -11,7 +12,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Special route for sitemap.xml - ensure it's served with XML content type
-app.get('/sitemap.xml', (req, res) => {
+app.get('/sitemap.xml', (req: Request, res: Response) => {
   const sitemapPath = pathModule.join(process.cwd(), 'public', 'sitemap.xml');
   fs.readFile(sitemapPath, (err, data) => {
     if (err) {
@@ -23,15 +24,15 @@ app.get('/sitemap.xml', (req, res) => {
   });
 });
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const reqPath = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
+  res.json = function (bodyJson: any) {
     capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+    return originalResJson.call(res, bodyJson);
   };
 
   res.on("finish", () => {
@@ -74,7 +75,7 @@ app.use((req, res, next) => {
     
     // History API fallback - serve index.html for any route that doesn't match an API or static resource
     // This is necessary for client-side routing to work with direct URL access
-    app.get('*', (req, res) => {
+    app.get('*', (req: Request, res: Response) => {
       // Skip API routes
       if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.startsWith('/assets')) {
         return;
@@ -86,10 +87,8 @@ app.use((req, res, next) => {
     });
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
+  // Use process.env.PORT for Render compatibility
+  const port = process.env.PORT ? Number(process.env.PORT) : 5000;
   server.listen({
     port,
     host: "0.0.0.0",
